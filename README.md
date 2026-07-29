@@ -1,10 +1,21 @@
 # MagicalPython
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://itoj.dev/embed/Wwatermark.png">
-  <source media="(prefers-color-scheme: light)" srcset="https://itoj.dev/embed/Bwatermark.png">
-  <img alt="ItsThatOneJack, Copyright, All Rights Reserved Unless Stated Otherwise. Follow the license!" src="https://itoj.dev/embed/Bwatermark.png">
-</picture>
+<table>
+  <tr>
+    <td valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="https://itoj.dev/embed/Wwatermark.png">
+        <source media="(prefers-color-scheme: light)" srcset="https://itoj.dev/embed/Bwatermark.png">
+        <img alt="ItsThatOneJack, Copyright, All Rights Reserved Unless Stated Otherwise. Follow the license!" src="https://itoj.dev/embed/Bwatermark.png">
+      </picture>
+    </td>
+    <td valign="top">
+      <picture>
+        <img width="500" height="500" alt="This project was created by ItsThatOneJack." src="https://github.com/user-attachments/assets/5a713e8c-a42b-4dc1-a358-f2a79e12dfcf" />
+      </picture>
+    </td>
+  </tr>
+</table>
 
 ## C Build Commands
 
