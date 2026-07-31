@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__magicalpython_internal__ = True
+__magicalpython_internal__ = True # This allows any traceback frames from this file to be removed from printed tracebacks. Makes them look better.
 
 import ctypes
 import os
@@ -10,27 +10,24 @@ from typing import List, Tuple, Optional, Dict, Any
 
 from .error import Error
 
-
 class MemScanError(Error):
     pass
-
 
 class ProcessAccessError(MemScanError):
     def __init__(self, pid: int, detail: str = ""):
         super().__init__(f"Could not access process {pid}. {detail}".strip())
 
-
 class RegionReadError(MemScanError):
     def __init__(self, address: int, detail: str = ""):
-        super().__init__(f"Failed reading memory at 0x{address:x}. {detail}".strip())
-
+        super().__init__(f"Failed to read memory at 0x{address:x}. {detail}".strip())
 
 class RegionWriteError(MemScanError):
     def __init__(self, address: int, detail: str = ""):
-        super().__init__(f"Failed writing memory at 0x{address:x}. {detail}".strip())
+        super().__init__(f"Failed to write memory at 0x{address:x}. {detail}".strip())
 
-
-# ---------------- backend interface ----------------
+# ==========
+# Backend stub
+# ==========
 
 class _Backend:
     def read(self, address: int, size: int) -> bytes:
@@ -46,8 +43,9 @@ class _Backend:
     def close(self) -> None:
         pass
 
-
-# ---------------- Linux backend: /proc/[pid]/{maps,mem} ----------------
+# ==========
+# Linux backend
+# ==========
 
 class _LinuxBackend(_Backend):
     def __init__(self, pid: int):
@@ -60,11 +58,9 @@ class _LinuxBackend(_Backend):
 
     def _try_ptrace_attach(self) -> None:
         """
-        Best-effort. Many distros permit same-uid /proc/[pid]/mem access
-        without this at all; some (stricter Yama ptrace_scope settings)
-        require an actual ptrace attach first. If this fails, the direct
-        read/write attempt will raise a clear RegionReadError/RegionWriteError
-        instead of silently doing nothing.
+        This is a best-effort attempt.
+        Many distros permit same-UID access without this at all, however some stricter `ptrace_scope` set systems require an actual ptrace attach first.
+        If this fails, the direct read/write attempt will raise a clear RegionReadError or RegionWriteError, instead of silently not working.
         """
         if self._attached:
             return
@@ -137,8 +133,9 @@ class _LinuxBackend(_Backend):
                 pass
             self._attached = False
 
-
-# ---------------- Windows backend: VirtualQueryEx / Read+WriteProcessMemory ----------------
+# ==========
+# Windows backend
+# ==========
 
 class _WindowsBackend(_Backend):
     PROCESS_VM_READ = 0x0010
@@ -149,7 +146,7 @@ class _WindowsBackend(_Backend):
 
     MEM_COMMIT = 0x1000
     PAGE_GUARD = 0x100
-    WRITABLE_PROTECTS = {0x04, 0x08, 0x40, 0x80}  # READWRITE, WRITECOPY, EXECUTE_READWRITE, EXECUTE_WRITECOPY
+    WRITABLE_PROTECTS = {0x04, 0x08, 0x40, 0x80} # READWRITE, WRITECOPY, EXECUTE_READWRITE, EXECUTE_WRITECOPY
 
     class MEMORY_BASIC_INFORMATION(ctypes.Structure):
         _fields_ = [
@@ -165,30 +162,24 @@ class _WindowsBackend(_Backend):
     @staticmethod
     def _is_admin() -> bool:
         try:
-            return bool(ctypes.windll.shell32.IsUserAnAdmin())  # type: ignore
+            return bool(ctypes.windll.shell32.IsUserAnAdmin()) # type: ignore
         except Exception:
             return False
 
     def __init__(self, pid: int):
         self.pid = pid
-        self.kernel32 = ctypes.windll.kernel32  # type: ignore
+        self.kernel32 = ctypes.windll.kernel32 # type: ignore
         self.kernel32.OpenProcess.restype = ctypes.c_void_p
         self.handle = self.kernel32.OpenProcess(self.ACCESS_RIGHTS, False, pid)
         if not self.handle:
             if self._is_admin():
                 raise ProcessAccessError(
                     pid,
-                    "OpenProcess failed even while elevated - the target is likely a "
-                    "protected process (common for antivirus/anti-cheat/some system "
-                    "processes), owned by a different account, or already exited."
+                    "OpenProcess failed even while elevated, the target is likely a protected process (common for antivirus/anti-cheat/some system processes), owned by a different account, or already exited."
                 )
             raise ProcessAccessError(
                 pid,
-                "OpenProcess failed. If the target process is owned by a different "
-                "user account or runs at a higher integrity level, try running as "
-                "Administrator. If it's already the same user and still fails, the "
-                "target may be a protected process this can't reach regardless of "
-                "elevation."
+                "OpenProcess failed. If the target process is owned by a different user account or runs at a higher integrity level, try running as Administrator. If it's already the same user and still fails, the target may be a protected process this can't reach regardless of elevation."
             )
 
     def regions(self) -> List[Tuple[int, int]]:
@@ -236,20 +227,14 @@ class _WindowsBackend(_Backend):
             self.kernel32.CloseHandle(self.handle)
             self.handle = None
 
-
 # ---------------- macOS backend: Mach VM APIs (best effort - see caveat below) ----------------
 
 class _MacBackend(_Backend):
     """
-    Best-effort macOS support via task_for_pid + mach_vm_* calls.
+    This is best-effort MacOS support via task_for_pid and mach_vm_* calls.
 
-    HONEST LIMITATION: on modern macOS with System Integrity Protection
-    enabled, task_for_pid against an arbitrary process will fail with a
-    permissions error even when running as root. This is a real OS-level
-    restriction (SIP), not a gap in this implementation - it generally only
-    succeeds against processes you have specific entitlements for, or on a
-    machine with SIP disabled. The error below surfaces that clearly instead
-    of failing silently.
+    On modern MacOS with System Integrity Protection (SIP) enabled, task_for_pid against an arbitrary process will fail with a permissions error, even when running as root.
+    This is an OS-level restriction, the only way around it is per-process entitlements, or disabling SIP.
     """
 
     KERN_SUCCESS = 0
@@ -278,9 +263,7 @@ class _MacBackend(_Backend):
         if ret != self.KERN_SUCCESS:
             raise ProcessAccessError(
                 pid,
-                f"task_for_pid failed (kern_return_t={ret}). On modern macOS this "
-                f"almost always means System Integrity Protection is blocking access - "
-                f"this is an OS-level restriction, not something Python++ can bypass."
+                f"Task_for_pid failed (kern_return_t={ret}). On modern macOS this almost always means System Integrity Protection is blocking access, this is an OS-level restriction, not something MagicalPython can get around."
             )
         self.task = task
 
@@ -332,11 +315,11 @@ class _MacBackend(_Backend):
     def close(self) -> None:
         pass
 
-
-# ---------------- backend selection + caching ----------------
+# ==========
+# Backend selection
+# ==========
 
 _backend_cache: Dict[int, _Backend] = {}
-
 
 def _get_backend(pid: int) -> _Backend:
     if pid in _backend_cache:
@@ -354,13 +337,11 @@ def _get_backend(pid: int) -> _Backend:
     _backend_cache[pid] = backend
     return backend
 
-
 def accessible(pid: int) -> Tuple[bool, bool]:
     """
-    Returns (can_read, can_write) for a given pid - does NOT raise. Opens the
-    process, does a tiny real read as the read-check, and a tiny real
-    write-then-restore into a byte this process itself owns (never touches
-    the target's actual data) as the write-check.
+    Returns (can_read, can_write) for a given process ID, doesn't raise.
+
+    The check is performed by opening the process, trying to read (returning instantly with (False, False) if fails), then trying to write back what was read.
     """
     try:
         backend = _get_backend(pid)
@@ -384,32 +365,31 @@ def accessible(pid: int) -> Tuple[bool, bool]:
         except MemScanError:
             continue
         try:
-            backend.write(start, original)  # write back the SAME byte - a real write, zero actual change
+            backend.write(start, original) # Write back the same byte, a real write but nothing is actually changed.
             can_write = True
         except MemScanError:
             pass
-        break  # one successful region is enough to answer the question
+        break # One successful region is enough to provide a result.
 
     return (can_read, can_write)
 
-
-# ---------------- MemoryScanner: the Cheat-Engine-style scan/narrow primitives ----------------
+# ==========
+# MemoryScanner
+# ==========
 
 class ScannerNotInitializedError(MemScanError):
     def __init__(self):
-        super().__init__("Call scan_unknown() (or set a ctype) before rescanning/refreshing candidates")
-
+        super().__init__("Call scan_unknown() (or set a ctype) before rescanning/refreshing candidates.")
 
 class PatternError(MemScanError):
     def __init__(self, pattern: str, detail: str = ""):
         super().__init__(f"Invalid pattern {pattern!r}. {detail}".strip())
 
-
 def _parse_pattern(pattern: str):
     """Parses 'AA BB ?? CC' into (bytes_with_wildcards_as_0, mask_list_of_bool)."""
     tokens = pattern.split()
     if not tokens:
-        raise PatternError(pattern, "pattern is empty")
+        raise PatternError(pattern, "pattern is empty.")
     values = bytearray()
     mask = []
     for tok in tokens:
@@ -420,16 +400,13 @@ def _parse_pattern(pattern: str):
             try:
                 values.append(int(tok, 16))
             except ValueError:
-                raise PatternError(pattern, f"'{tok}' is not a valid hex byte or wildcard")
+                raise PatternError(pattern, f"'{tok}' is not a valid hex byte or wildcard.")
             mask.append(True)
     return bytes(values), mask
 
-
 class MemoryScanner:
     """
-    Scan and narrow candidate addresses in a process's memory (same-process or
-    remote - just pass its pid). Only the primitives are provided here;
-    interactivity (prompting between rescans, etc.) is entirely up to you.
+    Scan and narrow candidate addresses in a process' memory (same-process or remote, just pass the PID if remote). Only the primitives are provided, all else is up to the creator.
     """
 
     def __init__(self, pid: int):
@@ -440,11 +417,8 @@ class MemoryScanner:
 
     def scan_unknown(self, ctype: type = ctypes.c_long, alignment: Optional[int] = None) -> int:
         """
-        First scan with no known value: records every aligned position across
-        every readable+writable region as a candidate, with its current value.
-
-        This is deliberately the slow, full-address-space walk - expect it to
-        take real time on a process with a large memory footprint.
+        First scan with no known value, recording every aligned position across every readable/writable region as a candidate, with its current value.
+        This is understandably very slow, and uses a lot of memory.
         """
         width = ctypes.sizeof(ctype)
         step = alignment or width
@@ -455,7 +429,7 @@ class MemoryScanner:
             try:
                 data = self._backend.read(start, size)
             except MemScanError:
-                continue  # a region can vanish/become unreadable mid-scan - skip it, don't abort the whole scan
+                continue # A region can vanish/become unreadable mid-scan, skip it, don't abort the whole scan.
             for offset in range(0, len(data) - width + 1, step):
                 addr = start + offset
                 value = ctype.from_buffer_copy(data, offset).value
@@ -507,14 +481,14 @@ class MemoryScanner:
 
     def to_pointers(self, ctype: Optional[type] = None) -> list:
         """Wrap all remaining candidates as real Pointer objects (same pid, remote-aware automatically)."""
-        from .pointer import Pointer  # local import - avoids a circular import at module load time
+        from .pointer import Pointer # Local impor, this way we avoid a circular import at module load time.
 
         ct = ctype or self._ctype
         return [Pointer(addr, ct, pid=self.pid, sure=True) for addr in self._candidates]
 
     def scan_pattern(self, pattern: str) -> List[int]:
         """
-        AOB (array-of-bytes) scan. Pattern is space-separated hex bytes with
+        AoB (array-of-bytes) scan. Pattern is space-separated hex bytes with
         '??' as a wildcard for "any byte", e.g. "48 8B ?? ?? 89 C8".
         Returns a list of absolute addresses where the pattern matches,
         searched across every readable+writable region.
@@ -553,5 +527,5 @@ class MemoryScanner:
                 data = self._backend.read(addr, width)
                 refreshed[addr] = ctype.from_buffer_copy(data).value
             except MemScanError:
-                continue  # candidate address became unreadable - drop it silently, it's no longer valid anyway
+                continue # Candidate address became unreadable, drop it silently, it's no longer valid anyway.
         self._candidates = refreshed

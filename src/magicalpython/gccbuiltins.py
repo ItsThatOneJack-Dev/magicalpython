@@ -14,8 +14,8 @@ if sys.platform == "win32":
     _POPCNT_ASM = "popcnt rax, rcx\nret"
     _BSWAP32_ASM = "mov eax, ecx\nbswap eax\nret"
     _BSWAP64_ASM = "mov rax, rcx\nbswap rax\nret"
-    _BSR_ASM = "bsr rax, rcx\nret"   # bit scan reverse - index of highest set bit
-    _BSF_ASM = "bsf rax, rcx\nret"   # bit scan forward - index of lowest set bit
+    _BSR_ASM = "bsr rax, rcx\nret" # Bit scan reverse, index of highest set bit.
+    _BSF_ASM = "bsf rax, rcx\nret" # Bit scan forward, index of lowest set bit.
 else:
     _POPCNT_ASM = "popcnt rax, rdi\nret"
     _BSWAP32_ASM = "mov eax, edi\nbswap eax\nret"
@@ -33,49 +33,45 @@ if _features.get("popcnt"):
 else:
     _popcnt_fn = None
 
-
 class __builtin__:
-    """GCC-style builtins - real hardware instructions where the CPU supports them, correct pure-Python fallback otherwise."""
+    """
+    GCC-style __builtin__s, we use hardware instructions when the CPU supports them, if it doesn't then we use Python fallbacks
+    """
 
     @staticmethod
     def popcount(x: int) -> int:
-        """Number of set bits in x (like GCC's __builtin_popcount)."""
+        """Number of set bits in x."""
         if x < 0:
-            raise ValueError("popcount expects a non-negative integer")
+            raise ValueError("Popcount expects a non-negative integer.")
         if _popcnt_fn is not None:
             return _popcnt_fn(x)
-        return bin(x).count("1")  # correct, portable fallback
+        return bin(x).count("1")
 
     @staticmethod
     def clz(x: int, width: int = 64) -> int:
-        """Count leading zeros in a `width`-bit representation of x (like GCC's __builtin_clz)."""
+        """Count leading zeros in a `width`-bit representation of x."""
         if x < 0:
-            raise ValueError("clz expects a non-negative integer")
+            raise ValueError("Clz expects a non-negative integer.")
         if x == 0:
             return width
-        highest_set_bit = _bsr_fn(x)  # index of highest set bit, 0-based
+        highest_set_bit = _bsr_fn(x) # The index of the highest set bit, 0-based.
         return width - 1 - highest_set_bit
 
     @staticmethod
     def ctz(x: int) -> int:
-        """Count trailing zeros in x (like GCC's __builtin_ctz). Undefined-in-C for x==0; we return 64 instead of undefined behavior."""
+        """Count trailing zeros in x. Undefined-in-C for x==0; we return 64 instead of undefined behavior."""
         if x < 0:
-            raise ValueError("ctz expects a non-negative integer")
+            raise ValueError("Ctz expects a non-negative integer.")
         if x == 0:
             return 64
         return _bsf_fn(x)
 
     @staticmethod
     def bswap32(x: int) -> int:
-        """Byte-swap a 32-bit value (like GCC's __builtin_bswap32)."""
+        """Byte-swap a 32-bit value."""
         return _bswap32_fn(x)
 
     @staticmethod
     def bswap64(x: int) -> int:
-        """Byte-swap a 64-bit value (like GCC's __builtin_bswap64)."""
+        """Byte-swap a 64-bit value."""
         return _bswap64_fn(x)
-
-    @staticmethod
-    def expect(value, expected):
-        """No-op branch-prediction hint (like GCC's __builtin_expect) - CPython has no branch predictor hint mechanism, so this purely returns `value` unchanged; it exists for API-compatible porting of C-style code, not for any real effect."""
-        return value

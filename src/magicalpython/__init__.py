@@ -1,4 +1,4 @@
-__magicalpython_internal__ = True # Hide from tracebacks.
+__magicalpython_internal__ = True # This allows any traceback frames from this file to be removed from printed tracebacks. Makes them look better.
 
 import ast
 import sys
@@ -26,10 +26,33 @@ from .elevate import (
 from .cpu import cpuid, vendor_string, cpu_features
 from .atomics import atomic_add, atomic_exchange, atomic_compare_exchange
 from .spinlock import SpinLock
+from .oslock import OSLock, OSLockError
+from .trylock import TryLock, LockNotAcquiredError
 from .lifecycle import register_crash_handler, unregister_crash_handler, defer, undefer, LifecycleError
 from .protect import protect, temporary_protection, Protection, ProtectionError
 from .bitfields_unions import bitfield, union, BitfieldError, UnionError
 from .gccbuiltins import __builtin__
+
+__all__ = [
+    "q", "Err", "Ok", "Result",
+    "Error",
+    "asm", "AsmError", "AsmTypeError", "AssemblyError", "AllocationError", "ExecutionError", "ClobberError", "UnknownArchError", "UnsupportedArchError",
+
+    "malloc", "calloc", "Pointer", "PointerError", "NullPointerError", "CachedObjectError", "CachedAddressError", "FreedPointerError", "AlignmentError", "is_safe", "is_interned",
+    "MemoryScanner", "MemScanError", "RegionReadError", "RegionWriteError", "ProcessAccessError", "ScannerNotInitializedError", "PatternError", "accessible",
+    "elevated_entrypoint", "relaunch_elevated", "is_elevated", "ElevationError", "UnpicklableHandoffError",
+    "cpuid", "vendor_string", "cpu_features",
+    "atomic_add", "atomic_exchange", "atomic_compare_exchange",
+    "SpinLock",
+    "OSLock", "OSLockError",
+    "TryLock", "LockNotAcquiredError",
+    "register_crash_handler", "unregister_crash_handler", "defer", "undefer", "LifecycleError",
+    "protect", "temporary_protection", "Protection", "ProtectionError",
+    "bitfield", "union", "BitfieldError", "UnionError",
+    "__builtin__"
+]
+
+__version__ = "0.2.0"
 
 class _AutoTryTransform(ast.NodeTransformer):
     def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.FunctionDef:

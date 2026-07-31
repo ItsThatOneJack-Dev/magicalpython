@@ -81,66 +81,51 @@ def _make_enhanced(builtin_exc_type):
     Enhanced.__qualname__ = builtin_exc_type.__name__
     return Enhanced
 
-ValueError = _make_enhanced(builtins.ValueError)
-TypeError = _make_enhanced(builtins.TypeError)
-RuntimeError = _make_enhanced(builtins.RuntimeError)
-KeyError = _make_enhanced(builtins.KeyError)
+ArithmeticError = _make_enhanced(builtins.ArithmeticError)
+BufferError = _make_enhanced(builtins.BufferError)
+LookupError = _make_enhanced(builtins.LookupError)
+AssertionError = _make_enhanced(builtins.AssertionError)
+AttributeError = _make_enhanced(builtins.AttributeError)
+EOFError = _make_enhanced(builtins.EOFError)
+FloatingPointError = _make_enhanced(builtins.FloatingPointError)
+ImportError = _make_enhanced(builtins.ImportError)
+ModuleNotFoundError = _make_enhanced(builtins.ModuleNotFoundError)
 IndexError = _make_enhanced(builtins.IndexError)
-Error
-
-"""
-ArithmeticError
-BufferError
-LookupError
-AssertionError
-AttributeError
-EOFError
-FloatingPointError
-GeneratorExit # NOT THIS ONE
-ImportError
-ModuleNotFoundError
-IndexError
-KeyError
-KeyboardInterrupt # NOT THIS ONE
-MemoryError
-NameError
-NotImplementedError
-OSError
-OverflowError
-PythonFinalizationError
-RecursionError
-ReferenceError
-RuntimeError
-StopIteration
-StopAsyncIteration
-SyntaxError
-IndentationError
-SystemError
-SystemExit # NOT THIS ONE
-TypeError
-UnboundLocalError
-UnicodeError
-UnicodeEncodeError
-UnicodeDecodeError
-UnicodeTranslateError
-ValueError
-ZeroDivisionError
-EnvironmentError
-IOError
-WindowsError
-BlockingIOError
-ChildProcessError
-ConnectionError
-BrokenPipeError
-ConnectionAbortedError
-ConnectionRefusedError
-ConnectionResetError
-FileExistsError
-FileNotFoundError
-InterruptedError
-IsADirectoryError
-NotADirectoryError
-PermissionError
-ProcessLookupError
-TimeoutError
-"""
+KeyError = _make_enhanced(builtins.KeyError)
+MemoryError = _make_enhanced(builtins.MemoryError)
+NameError = _make_enhanced(builtins.NameError)
+NotImplementedError = _make_enhanced(builtins.NotImplementedError)
+OSError = _make_enhanced(builtins.OSError)
+OverflowError = _make_enhanced(builtins.OverflowError)
+RecursionError = _make_enhanced(builtins.RecursionError)
+ReferenceError = _make_enhanced(builtins.ReferenceError)
+RuntimeError = _make_enhanced(builtins.RuntimeError)
+SyntaxError = _make_enhanced(builtins.SyntaxError)
+IndentationError = _make_enhanced(builtins.IndentationError)
+SystemError = _make_enhanced(builtins.SystemError)
+TypeError = _make_enhanced(builtins.TypeError)
+UnboundLocalError = _make_enhanced(builtins.UnboundLocalError)
+UnicodeError = _make_enhanced(builtins.UnicodeError)
+UnicodeEncodeError = _make_enhanced(builtins.UnicodeEncodeError)
+UnicodeDecodeError = _make_enhanced(builtins.UnicodeDecodeError)
+UnicodeTranslateError = _make_enhanced(builtins.UnicodeTranslateError)
+ValueError = _make_enhanced(builtins.ValueError)
+ZeroDivisionError = _make_enhanced(builtins.ZeroDivisionError)
+EnvironmentError = _make_enhanced(builtins.EnvironmentError)
+IOError = _make_enhanced(builtins.IOError)
+WindowsError = _make_enhanced(builtins.WindowsError)
+BlockingIOError = _make_enhanced(builtins.BlockingIOError)
+ChildProcessError = _make_enhanced(builtins.ChildProcessError)
+ConnectionError = _make_enhanced(builtins.ConnectionError)
+BrokenPipeError = _make_enhanced(builtins.BrokenPipeError)
+ConnectionAbortedError = _make_enhanced(builtins.ConnectionAbortedError)
+ConnectionRefusedError = _make_enhanced(builtins.ConnectionRefusedError)
+ConnectionResetError = _make_enhanced(builtins.ConnectionResetError)
+FileExistsError = _make_enhanced(builtins.FileExistsError)
+FileNotFoundError = _make_enhanced(builtins.FileNotFoundError)
+InterruptedError = _make_enhanced(builtins.InterruptedError)
+IsADirectoryError = _make_enhanced(builtins.IsADirectoryError)
+NotADirectoryError = _make_enhanced(builtins.NotADirectoryError)
+PermissionError = _make_enhanced(builtins.PermissionError)
+ProcessLookupError = _make_enhanced(builtins.ProcessLookupError)
+TimeoutError = _make_enhanced(builtins.TimeoutError)

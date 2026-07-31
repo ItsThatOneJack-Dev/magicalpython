@@ -1,33 +1,25 @@
-"""
-Python++ elevation bootstrap.
+# This file is the MagicalPython elevation bootstrap.
+# It is not meant to be imported or run directly.
+# relaunch_elevated spawns this automatically as the elevated process.
 
-Not meant to be imported or run directly by users - relaunch_elevated()
-spawns this automatically as the elevated process.
-
-Imports the target script as a plain MODULE (not as __main__), so any
-`if __name__ == "__main__":` guard in it never executes here - only its
-top-level defs/decorators run, which is exactly enough to register any
-@elevated_entrypoint handlers. Then connects back to the waiting
-unprivileged process, receives the designated handler name + payload,
-calls that handler directly, and exits. Nothing else in the target
-script ever runs in this process.
-"""
+# This file imports the target script as a plain module, so the `if __name__ == <...>` guard never executes.
+# This means we can wait for it to run through and all functions decorate, and then we can find the handler registered with `@elevated_entrypoint`.
+# We then connect to the waiting unprivileged process, receive the designated handler name, plus a payload, then we call the handler and exit.
+# This way only code stemming from the handler gets a chance to run.
 
 import sys
 import os
 import importlib.util
 from multiprocessing.connection import Client
 
-
 def main():
     if len(sys.argv) != 5:
-        print("usage: elevate_bootstrap.py <script_path> <host> <port> <token>", file=sys.stderr)
+        print("Usage: elevate_bootstrap.py <script_path> <host> <port> <token>", file=sys.stderr)
         sys.exit(1)
 
     script_path, host, port_str, token = sys.argv[1:5]
     port = int(port_str)
 
-    # so the target script can still import its own sibling modules normally
     sys.path.insert(0, os.path.dirname(os.path.abspath(script_path)))
 
     spec = importlib.util.spec_from_file_location("__magicalpython_handoff_target__", script_path)
@@ -36,9 +28,9 @@ def main():
         sys.exit(1)
 
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)  # runs top-level code only; __name__ != "__main__" here
+    spec.loader.exec_module(module) # Runs top-level code only, __name__ != "__main__" here.
 
-    from magicalpython.elevate import _HANDLER_REGISTRY  # same package/process, registry now populated
+    from magicalpython.elevate import _HANDLER_REGISTRY # Same package/process, the registry is populated now.
 
     conn = Client((host, port), authkey=token.encode())
     try:
@@ -64,7 +56,6 @@ def main():
         raise
 
     sys.exit(0)
-
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,4 @@
-__magicalpython_internal__ = True
+__magicalpython_internal__ = True # This allows any traceback frames from this file to be removed from printed tracebacks. Makes them look better.
 
 import ctypes
 import os
@@ -9,7 +9,7 @@ _LIB = None
 def install_segfault_guard():
     global _LIB
     if _LIB is not None:
-        return  # already installed
+        return # Already installed, do nothing.
 
     here = os.path.dirname(__file__)
     if sys.platform == "win32":
@@ -19,7 +19,7 @@ def install_segfault_guard():
 
     if not os.path.exists(path):
         raise RuntimeError(
-            f"Python++ native guard not built for this platform: {path} not found."
+            f"MagicalPython native guard not built for this platform: {path} not found."
         )
 
     _LIB = ctypes.CDLL(path)

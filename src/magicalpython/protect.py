@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__magicalpython_internal__ = True
+__magicalpython_internal__ = True # This allows any traceback frames from this file to be removed from printed tracebacks. Makes them look better.
 
 import ctypes
 import enum
@@ -36,7 +36,7 @@ def _page_size() -> int:
                 ("wProcessorRevision", ctypes.c_ushort),
             ]
         info = SYSTEM_INFO()
-        ctypes.windll.kernel32.GetSystemInfo(ctypes.byref(info))  # type: ignore
+        ctypes.windll.kernel32.GetSystemInfo(ctypes.byref(info)) # type: ignore
         return info.dwPageSize
     import os
     return os.sysconf("SC_PAGE_SIZE")
@@ -64,7 +64,7 @@ if sys.platform == "win32":
         if win_flag is None:
             raise ProtectionError(f"Unsupported flag combination for Windows: {flags}")
         old_protect = ctypes.c_ulong(0)
-        ok = ctypes.windll.kernel32.VirtualProtect(  # type: ignore
+        ok = ctypes.windll.kernel32.VirtualProtect( # type: ignore
             ctypes.c_void_p(address), ctypes.c_size_t(size), win_flag, ctypes.byref(old_protect)
         )
         if not ok:
@@ -109,20 +109,17 @@ else:
         ret = libc.mprotect(ctypes.c_void_p(address), ctypes.c_size_t(size), ctypes.c_int(prot))
         if ret != 0:
             err = ctypes.get_errno()
-            raise ProtectionError(f"mprotect failed at 0x{address:x} (errno {err})")
+            raise ProtectionError(f"Mprotect failed at 0x{address:x} (errno {err}).")
         return old_flags
 
 def protect(address: int, size: int, flags: int) -> int:
     """
     Changes memory protection for the page(s) covering [address, address+size).
-    flags is a combination of Protection.READ/WRITE/EXEC (e.g. Protection.READ | Protection.WRITE).
-    Returns the PREVIOUS flags (best-effort - exact on Windows/Linux, defaults
-    to 0 on macOS since we don't have a cheap same-process region query there
-    yet - use temporary_protection() if you need guaranteed restoration).
+    Flags is a combination of Protection.READ/WRITE/EXEC (e.g. Protection.READ | Protection.WRITE).
+    Returns the previous flags on Windows and Linux, and defaults to 0 on MacOS as there isn't a cheap way to check the previous flags.
+    If you need to guarantee that the protection flags will be restored, use temporary_protection().
 
-    Note: protection is page-granular - this affects the ENTIRE page(s)
-    containing your range, not just the exact bytes requested, since that's
-    how the underlying OS calls work.
+    Note: Protection is page-granular, this affect the entire page(s) containing the range, not the exact bytes requested.
     """
     page_addr, page_size = _page_align(address, size)
     return _set_protection(page_addr, page_size, flags)
@@ -130,11 +127,9 @@ def protect(address: int, size: int, flags: int) -> int:
 @contextmanager
 def temporary_protection(address: int, size: int, flags: int):
     """
-    Context manager: changes protection to `flags`, restores the previous
-    protection afterward - even if an exception occurs inside the block.
-
-        with temporary_protection(ptr.address, 4, Protection.WRITE | Protection.READ):
-            ptr.value = 123
+    This is a context manager that changes the memory protection of [address, address+size), and then sets it back afterwards.
+    The only time the protection flags are not set back is if an exception occurs inside the block, or other serious errors such as faults interrupt Python itself.
+    In those cases, it is probably the least of your worries anyway.
     """
     old_flags = protect(address, size, flags)
     try:

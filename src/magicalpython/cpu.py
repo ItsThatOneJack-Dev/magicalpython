@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__magicalpython_internal__ = True
+__magicalpython_internal__ = True # This allows any traceback frames from this file to be removed from printed tracebacks. Makes them look better.
 
 import ctypes
 import sys
@@ -9,12 +9,11 @@ from typing import Dict, Tuple
 from .asm import inline_asm
 from .pointer import malloc
 
-# cpuid clobbers ebx, which is callee-saved in both calling conventions - we
-# save/restore it ourselves rather than relying on the @asm clobbers system,
-# since we need full manual control over the register layout here.
+# CPUID clobbers EBX, which is callee-saved in both calling conventions,
+# so we save/restore it ourselves rather than relying on the @asm clobbers system as we need manual control over register layout for this.
 
 if sys.platform == "win32":
-    # Windows x64: leaf=ecx, subleaf=edx, out_ptr=r8
+    # Windowx x64: Leaf = ECX, Subleaf = EDX, Out Pointer = R8
     _CPUID_ASM = """
         push rbx
         mov eax, ecx
@@ -28,11 +27,9 @@ if sys.platform == "win32":
         ret
     """
 else:
-    # System V x64 (Linux/macOS): leaf=edi, subleaf=esi, out_ptr=rdx
-    # IMPORTANT: cpuid clobbers edx (one of its own output registers), which
-    # collides with rdx being the 3rd argument register here - out_ptr must
-    # be staged into a register cpuid doesn't touch (r10) BEFORE calling it,
-    # or the pointer gets destroyed before we can use it to write results.
+    # System V x64 (Linux/macOS): Leaf = EDI, Subleaf = ESI, Out Pointer = RDX
+    # IMPORTANT: CPUID clobbers EDX (one of its own output registers), which collides with RDX being the 3rd argument register.
+    # out_ptr must be staged into a register CPUID doesn't touch (R10) before calling it, or the pointer will be destroyed before we can write results.
     _CPUID_ASM = """
         push rbx
         mov r10, rdx
@@ -53,9 +50,10 @@ _cpuid_fn = inline_asm(
     restype=None,
 )
 
-
 def cpuid(leaf: int, subleaf: int = 0) -> Tuple[int, int, int, int]:
-    """Raw CPUID - returns (eax, ebx, ecx, edx) for the given leaf/subleaf, untouched."""
+    """Raw CPUID.
+    Returns (EAX, EBX, ECX, EDX) for the given leaf/subleaf.
+    """
     out = malloc(ctypes.c_uint32, 4)
     try:
         _cpuid_fn(leaf, subleaf, out.address)
@@ -63,16 +61,15 @@ def cpuid(leaf: int, subleaf: int = 0) -> Tuple[int, int, int, int]:
     finally:
         out.free()
 
-
 def vendor_string() -> str:
-    """CPU vendor string, e.g. 'GenuineIntel' or 'AuthenticAMD' - from CPUID leaf 0."""
+    """Gets the CPU vendor string from CPUID leaf 0.
+    E.g. 'GenuineIntel' or 'AuthenticAMD'."""
     _, ebx, ecx, edx = cpuid(0)
     return b"".join(
         v.to_bytes(4, "little") for v in (ebx, edx, ecx)
     ).decode("ascii", errors="replace")
 
-
-# (leaf, subleaf, register, bit, feature_name) - deliberately a small, well-known subset
+# (leaf, subleaf, register, bit, feature_name), this is deliberately a small, well-known subset.
 _FEATURE_BITS = [
     (1, 0, "edx", 25, "sse"),
     (1, 0, "edx", 26, "sse2"),
@@ -90,7 +87,6 @@ _FEATURE_BITS = [
     (0x80000001, 0, "ecx", 5, "lzcnt"),
     (0x80000001, 0, "edx", 29, "long_mode"),
 ]
-
 
 def cpu_features() -> Dict[str, bool]:
     """Decoded boolean feature flags for a well-known subset of CPUID bits."""

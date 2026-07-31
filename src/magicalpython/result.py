@@ -1,6 +1,5 @@
-__magicalpython_internal__ = True # Hide from tracebacks.
+__magicalpython_internal__ = True # This allows any traceback frames from this file to be removed from printed tracebacks. Makes them look better.
 
-import sys
 from typing import Generic, TypeVar, Callable, Any, Union, Iterator, cast
 from .error import Error
 
@@ -52,21 +51,18 @@ class Ok(Generic[T]):
     def or_else(self, op: Callable[[Any], "Result"]) -> "Ok[T]":
         return self
 
-    # C++-brained operator abuse below
-
     def __bool__(self) -> bool:
         return True
 
     def __iter__(self) -> Iterator[T]:
-        # Rust IntoIterator energy: yields exactly once
         yield self.value
 
     def __rshift__(self, op: Callable[[T], "Result"]) -> "Result":
-        # result >> f >> g  chaining, and_then but uglier
+        # You can result >> f >> g, for example.
         return self.and_then(op)
 
     def __pos__(self) -> Any:
-        # +result as a unary "deref" unwrap. deeply unnecessary.
+        # +result as a unary deref unwrap, there is no reason why we need this, but um... uh... yes.
         return self.unwrap()
 
     def __eq__(self, other: object) -> bool:
@@ -74,7 +70,6 @@ class Ok(Generic[T]):
 
     def __repr__(self) -> str:
         return f"Ok({repr(self.value)})"
-
 
 class Err(Generic[E]):
     def __init__(self, value: E) -> None:
@@ -125,7 +120,7 @@ class Err(Generic[E]):
         return False
 
     def __iter__(self) -> Iterator[Any]:
-        # yields zero times, so `for x in err_result:` just silently does nothing
+        # Yields zero times.
         return
         yield
 
@@ -133,7 +128,7 @@ class Err(Generic[E]):
         return self
 
     def __pos__(self) -> Any:
-        return self.unwrap()  # will raise, as intended
+        return self.unwrap() # Will raise, as intended.
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Err) and self.value == other.value
@@ -172,20 +167,22 @@ def enhance_exception(exc: BaseException) -> BaseException:
 _NEVER_CATCH = (SystemExit, KeyboardInterrupt, GeneratorExit)
 
 class _Propagate(Exception):
-    """Internal control-flow exception. If you catch this yourself, that's on you."""
+    """
+    This is an internal control-flow exception, it should only ever be caught internally by MagicalPython.
+    """
     def __init__(self, err: "Err"):
         self.err = err
 
 def q(result: "Result[T, E]") -> T:
     if isinstance(result, Ok):
         return result.unwrap()
-    raise _Propagate(result)  # now narrowed to Err[E]
+    raise _Propagate(result)
 
 def try_block(fn: Callable[..., Any]) -> Callable[..., "Result"]:
     """
-    Decorator that turns a function using q() into one that returns
-    a Result instead of raising. This is, in effect, reimplementing
-    Rust's function-level ? propagation using exceptions as goto.
+    Decorator that turns a function using `q()` into one that returns a Result instead of raising. Essentially Rust's `?` operator.
+
+    All functions are internally wrapped with this without your intervention, we do this in MagicalPython's __init__ file using some cool tricks.
     """
     def wrapper(*args, **kwargs) -> "Result":
         try:
@@ -196,6 +193,15 @@ def try_block(fn: Callable[..., Any]) -> Callable[..., "Result"]:
     return wrapper
 
 def _auto_try(fn):
+    """
+    Your linter may say this function is unused.
+    Your linter is wrong.
+
+    This function is used, just indirectly. As part of MagicalPython's weird messing with Python itself, we modify the ASTs of your code before it is fully used.
+    As part of the AST modification, we insert calls to this function.
+
+    Removing this will cause really weird errors.
+    """
     def wrapper(*args, **kwargs):
         try:
             value = fn(*args, **kwargs)

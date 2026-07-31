@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__magicalpython_internal__ = True
+__magicalpython_internal__ = True # This allows any traceback frames from this file to be removed from printed tracebacks. Makes them look better.
 
 import ctypes
 import os
@@ -15,26 +15,22 @@ class PointerError(Error):
 class CachedObjectError(PointerError):
     def __init__(self, obj):
         super().__init__(
-            f"{obj!r} is a CPython-cached object shared across your whole process. "
-            f"Writing to it will corrupt every other use of this value everywhere. "
-            f"Pass sure=True if you really mean it."
+            f"{obj!r} is a CPython-cached object shared across your whole process. Writing to it will corrupt every other use of this value everywhere. Pass sure=True if you really mean it."
         )
 
 class CachedAddressError(PointerError):
     def __init__(self, address: int):
         super().__init__(
-            f"Address 0x{address:x} belongs to a CPython-cached small int shared "
-            f"across your whole process. Writing to it will corrupt every other use "
-            f"of that value everywhere. Pass sure=True if you really mean it."
+            f"Address 0x{address:x} belongs to a CPython-cached small int shared across your whole process. Writing to it will corrupt every other use of that value everywhere. Pass sure=True if you really mean it."
         )
 
 class NullPointerError(PointerError):
     def __init__(self):
-        super().__init__("Attempted to dereference a null pointer")
+        super().__init__("Attempted to dereference a null pointer.")
 
 class FreedPointerError(PointerError):
     def __init__(self):
-        super().__init__("Attempted to use a pointer after its memory was freed")
+        super().__init__("Attempted to use a pointer after its memory was freed.")
 
 class AlignmentError(PointerError):
     def __init__(self, n):
@@ -60,8 +56,8 @@ def _is_cached(obj) -> bool:
 def is_safe(value: Any) -> bool:
     """
     True if `value` is safe to point at without corrupting shared process state.
-    int: safe unless cached (-5..256). str: safe unless interned. Anything
-    else: always safe.
+
+    Checks both for small ints and interned strings, if you are passing something that is not an int nor a string then you will just get `true`.
     """
     if isinstance(value, int):
         return value not in _SMALL_INT_RANGE
@@ -70,16 +66,13 @@ def is_safe(value: Any) -> bool:
     return True
 
 def _address_is_known_cached(address: int) -> bool:
-    """Address-only check - only catches cached small ints (see is_safe/Pointer.of for the fuller, object-based check)."""
+    """Address-only check, only catch cached small ints."""
     return address in _CACHED_INT_ADDRESSES
 
 class Pointer:
     """
-    A raw pointer into process memory - your own process by default, or any
-    other process by passing pid=<that process's pid>. Mode is picked
-    automatically: pid omitted or equal to os.getpid() -> local ctypes access;
-    any other pid -> routed through the appropriate remote backend
-    (see memscan.py) with the exact same API either way.
+    A raw pointer into process memory, your own process by default, or any other process by passing the `pid` argument when constructing, and providing the process ID of the process you are getting a pointer into.
+    Mode is chosen automatically, if `PID` is omitted or equal to the current process, only local ctypes are accessible, otherwise we can route it through the appropriate remote backend.
     """
 
     __slots__ = ("_address", "_ctype", "_owns_memory", "_freed", "_keepalive", "_pid", "_is_remote")
@@ -97,8 +90,7 @@ class Pointer:
         resolved_pid = pid if pid is not None else os.getpid()
         is_remote = resolved_pid != os.getpid()
 
-        # the cached-small-int check is a CPython-in-THIS-process concept - it
-        # doesn't apply (and can't be meaningfully checked) against another process
+        # We only check for small ints in this process, since CPython is what caches them.
         if not is_remote and not sure and _address_is_known_cached(address):
             raise CachedAddressError(address)
 
@@ -109,8 +101,6 @@ class Pointer:
         self._owns_memory = owns_memory
         self._freed = False
         self._keepalive = _keepalive
-
-    # --- core state ---
 
     @property
     def address(self) -> int:
@@ -141,8 +131,6 @@ class Pointer:
     def _backend(self):
         from .memscan import _get_backend
         return _get_backend(self._pid)
-
-    # --- typed deref ---
 
     @property
     def value(self) -> Any:
@@ -178,8 +166,6 @@ class Pointer:
             return
         ct.from_address(self._address).value = new_value
 
-    # --- raw byte access ---
-
     def read_bytes(self, n: int) -> bytes:
         self._check_usable()
         if self._is_remote:
@@ -193,8 +179,6 @@ class Pointer:
             return
         buf = ctypes.create_string_buffer(data, len(data))
         ctypes.memmove(self._address, buf, len(data))
-
-    # --- pointer-to-pointer ---
 
     def read_ptr(self) -> "Pointer":
         self._check_usable()
@@ -212,16 +196,12 @@ class Pointer:
             return
         ctypes.c_void_p.from_address(self._address).value = other._address
 
-    # --- reinterpret ---
-
     def cast(self, new_ctype: Type) -> "Pointer":
         self._check_usable()
         return Pointer(
             self._address, ctype=new_ctype, pid=self._pid, sure=True,
             owns_memory=False, _keepalive=self._keepalive,
         )
-
-    # --- seek / arithmetic ---
 
     def _elem_size(self) -> int:
         return ctypes.sizeof(self._ctype) if self._ctype else 1
@@ -270,30 +250,20 @@ class Pointer:
     def __setitem__(self, i: int, new_value: Any) -> None:
         self.at(i * self._elem_size()).value = new_value
 
-    # --- safety introspection ---
-
     def is_safe(self) -> bool:
         """
-        True if this pointer's CURRENT address is known-safe to write to.
-        Only meaningful (and only checked) for local pointers - a remote
-        pointer's target process may not even be Python, so the CPython
-        cached-object concept doesn't apply there; always reports True for
-        remote pointers.
+        Returns true if the pointer's current address is known as safe to write to.
+        This is only meaningful for local pointers, a remote pointers target process might not even be CPython, so why check for CPython cached data.
         """
         if self._is_remote:
             return True
         return not _address_is_known_cached(self._address)
 
-    # --- freeing (owned local memory only) ---
-
     def free(self) -> None:
         if self._is_remote:
-            raise PointerError("Cannot free memory in another process - Python++ doesn't allocate remote memory")
+            raise PointerError("Cannot free memory in another process, MagicalPython doesn't allocate remote memory.")
         if not self._owns_memory:
-            raise PointerError(
-                "Cannot free a pointer that doesn't own its memory "
-                "(only pointers from malloc/calloc can be freed)"
-            )
+            raise PointerError("Cannot free a pointer that doesn't own its memory (only pointers from malloc/calloc can be freed).")
         self._freed = True
         self._keepalive = None
 
@@ -302,21 +272,15 @@ class Pointer:
         loc = f"pid={self._pid}" if self._is_remote else "local"
         return f"Pointer<{tag}>(0x{self._address:016x}, {loc})"
 
-    # --- construction from a live Python object (local only) ---
-
     @classmethod
     def of(cls, value: Any, ctype: Optional[Type] = None, sure: bool = False) -> "Pointer":
         """
-        Get a raw Pointer to a live Python object's actual memory in THIS
-        process, via id(). Refuses (by default) to point at cached/interned
-        values - pass sure=True to override.
+        Get a raw Pointer to any live Python object's actual memory in this process via `id()` (which returns the memory address in CPython implementation).
+        Refuses by default to point at any small integer that is cached by CPython, or any string that is interned. Pass sure=true to bypass this and get a Pointer anyways.
         """
         if not sure and not is_safe(value):
             raise CachedObjectError(value)
         return cls(id(value), ctype=ctype, sure=True)
-
-
-# --- allocation primitives (always local - no such thing as remote malloc) ---
 
 def malloc(ctype: Type[ctypes._CData], count: int = 1) -> Pointer:
     buf = (ctype * count)() # pyright: ignore[reportOperatorIssue]

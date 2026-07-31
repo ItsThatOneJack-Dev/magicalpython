@@ -1,4 +1,4 @@
-__magicalpython_internal__ = True
+__magicalpython_internal__ = True # This allows any traceback frames from this file to be removed from printed tracebacks. Makes them look better.
 
 import ctypes
 import platform
@@ -11,10 +11,12 @@ from keystone import (
 
 from .error import Error
 
-# --- errors ---
+# ==========
+# Errors
+# ==========
 
 class AsmError(Error):
-    """Base class for every inline-asm-related failure."""
+    """Base class for every assembly-related error."""
     pass
 
 class AssemblyError(AsmError):
@@ -26,11 +28,11 @@ class AllocationError(AsmError):
         super().__init__(message)
 
 class ExecutionError(AsmError):
-    def __init__(self, message: str = "Inline assembly execution failed"):
+    def __init__(self, message: str = "Assembly execution failed"):
         super().__init__(message)
 
 class AsmTypeError(AsmError):
-    def __init__(self, message: str = "Unsupported type for inline asm argument/return"):
+    def __init__(self, message: str = "Unsupported type for asm argument/return"):
         super().__init__(message)
 
 class ClobberError(AsmError):
@@ -45,7 +47,9 @@ class UnsupportedArchError(AsmError):
     def __init__(self, name):
         super().__init__(f"No @asm variant of '{name}' matched this platform/architecture")
 
-# --- type mapping: plain python types -> ctypes, or pass a ctypes type through untouched ---
+# ==========
+# Type Mapping
+# ==========
 
 _TYPE_MAP = {
     int: ctypes.c_long,
@@ -57,17 +61,18 @@ _TYPE_MAP = {
 
 def _resolve_ctype(t):
     if t is None:
-        return None  # ctypes convention for void
+        return None # Ctypes convention for `void`
     if isinstance(t, type) and (
-        issubclass(t, ctypes._SimpleCData) or issubclass(t, ctypes._Pointer)  # type: ignore
+        issubclass(t, ctypes._SimpleCData) or issubclass(t, ctypes._Pointer) # type: ignore
     ):
-        return t  # already a real ctypes type, use as-is
+        return t # Already an actual ctypes type
     if t in _TYPE_MAP:
         return _TYPE_MAP[t]
     raise AsmTypeError(f"No known ctypes mapping for {t!r}; pass a ctypes type directly")
 
-
-# --- assembler / memory allocation ---
+# ==========
+# Assembler and memory allocation
+# ==========
 
 _CALLEE_SAVED = {
     "win32": {"rbx", "rbp", "rdi", "rsi", "r12", "r13", "r14", "r15"},
@@ -75,9 +80,7 @@ _CALLEE_SAVED = {
 }
 
 _VOLATILE = {"rax", "rcx", "rdx", "r8", "r9", "r10", "r11"}
-
 _ALL_KNOWN_REGS = _CALLEE_SAVED["win32"] | _CALLEE_SAVED["posix"] | _VOLATILE
-
 _ASM_REGISTRY: dict = {}
 
 _ARCH_CHECKS = {
@@ -99,20 +102,17 @@ def _build_clobber_wrap(asm_code: str, clobbers: list) -> str:
 
     callee_saved = _callee_saved_set()
     to_protect = [r.lower() for r in clobbers if r.lower() in callee_saved]
-    # volatile clobbers are accepted but need no protection - they're already
-    # fair game per the calling convention. Purely documentation for the reader.
+    # Volatile clobbers are accepted, however as they are volatile in nature they do not need protection.
+    # So we treat those as more documentation, and just choose to ignore the volatile ones.
 
     if "ret" in asm_code.lower():
-        raise AssemblyError(
-            "When using clobbers=[...], omit your own 'ret' - "
-            "Python++ appends the epilogue and return for you."
-        )
+        raise AssemblyError("When using clobbers=[...], omit your own 'ret' - MagicalPython will prepend the prologue and append the epilogue and return for you.")
 
     prologue = "\n".join(f"push {r}" for r in to_protect)
     epilogue = "\n".join(f"pop {r}" for r in reversed(to_protect))
     return f"{prologue}\n{asm_code}\n{epilogue}\nret"
 
-def _get_assembler():
+def _get_assembler(): # Get the relevant assembler for the system processor architecture.
     machine = platform.machine().lower()
     if machine in ("x86_64", "amd64"):
         return Ks(KS_ARCH_X86, KS_MODE_64)
@@ -123,16 +123,14 @@ def _get_assembler():
 
 def _alloc_executable(size: int):
     if sys.platform == "win32":
-        kernel32 = ctypes.windll.kernel32  # type: ignore
+        kernel32 = ctypes.windll.kernel32 # type: ignore
         MEM_COMMIT, MEM_RESERVE = 0x1000, 0x2000
         PAGE_EXECUTE_READWRITE = 0x40
 
         kernel32.VirtualAlloc.restype = ctypes.c_void_p
-        addr = kernel32.VirtualAlloc(
-            None, ctypes.c_size_t(size), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE
-        )
+        addr = kernel32.VirtualAlloc(None, ctypes.c_size_t(size), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)
         if not addr:
-            raise AllocationError("VirtualAlloc rejected the executable memory request")
+            raise AllocationError("VirtualAlloc rejected the executable memory request.")
 
         def free():
             kernel32.VirtualFree(ctypes.c_void_p(addr), 0, 0x8000)
@@ -146,19 +144,10 @@ def _alloc_executable(size: int):
         MAP_ANONYMOUS = 0x20 if sys.platform.startswith("linux") else 0x1000
 
         libc.mmap.restype = ctypes.c_void_p
-        libc.mmap.argtypes = [
-            ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int,
-            ctypes.c_int, ctypes.c_int, ctypes.c_long,
-        ]
-        addr = libc.mmap(
-            None, size, PROT_READ | PROT_WRITE | PROT_EXEC,
-            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0,
-        )
+        libc.mmap.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_long,]
+        addr = libc.mmap(None, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0,)
         if addr == ctypes.c_void_p(-1).value or not addr:
-            raise AllocationError(
-                "mmap rejected the executable memory request "
-                "(W^X policy or hardened runtime may be blocking RWX pages)"
-            )
+            raise AllocationError("mmap rejected the executable memory request (W^X policy or hardened runtime may be blocking RWX pages).")
 
         def free():
             libc.munmap(ctypes.c_void_p(addr), size)
@@ -173,13 +162,22 @@ def _arch_matches(arch):
         raise UnknownArchError(arch)
     return check()
 
-
 def _unavailable_stub(name: str) -> Callable[..., Any]:
     def stub(*args: Any, **kwargs: Any) -> Any:
         raise UnsupportedArchError(name)
     return stub
-
 class InlineAsm:
+    """
+    This class represents assembly and handles the processing of it.
+
+    Firstly, the prologue/epilogue needed (if any) is generated and attached to the provided assembly code.
+    Secondly, we fetch the required assembler for Keystone.
+    Thirdly, we assemble the code using Keystone with the assembler we fetched.
+    Forthly, we allocate the machine code some memory space, mark it executable, and give it a Python representation so it is callable.
+    Fifthly, we expose the callable object, as well as various properties for introspection.
+    
+    This class MUST be instantiated to work.
+    """
     def __init__(
         self,
         asm_code: str,
@@ -187,6 +185,24 @@ class InlineAsm:
         restype: Any = ctypes.c_long,
         clobbers: Optional[list] = None,
     ):
+        """
+        This class represents assembly and handles the processing of it.
+        
+        Firstly, the prologue/epilogue needed (if any) is generated and attached to the provided assembly code.
+        Secondly, we fetch the required assembler for Keystone.
+        Thirdly, we assemble the code using Keystone with the assembler we fetched.
+        Forthly, we allocate the machine code some memory space, mark it executable, and give it a Python representation so it is callable.
+        Fifthly, we expose the callable object, as well as various properties for introspection.
+
+        Arguments:
+            asm_code: str - The docstring of assembly code.
+            argtypes: Optional[List] = None - A list of types for the arguments to be passed.
+            restype: Any = ctypes.c_long - The type that will be returned by the assembly.
+            clobbers: Optional[list] = None - A list of registers that will be clobbered (overwritten), allows this code to save and reload them for you.
+        
+        Returns:
+            InlineAsm
+        """
         self._provided_asm = asm_code
         self._clobbers = list(clobbers) if clobbers else []
 
@@ -245,18 +261,41 @@ class InlineAsm:
         except Exception:
             pass
 
-
 def inline_asm(asm_code: str, argtypes: Optional[list] = None, restype: Any = int):
+    """
+    Make a callable assembly object.
+
+    Arguments:
+        asm_code: str - The docstring of assembly code.
+        argtypes: Optional[List] = None - A list of types for the arguments to be passed.
+        restype: Any = ctypes.c_long - The type that will be returned by the assembly.
+        clobbers: Optional[list] = None - A list of registers that will be clobbered (overwritten), allows this code to save and reload them for you.
+            
+    Returns:
+        InlineAsm - The callable assembly object.
+    """
     return InlineAsm(
         asm_code,
         argtypes=[_resolve_ctype(t) for t in (argtypes or [])],
         restype=_resolve_ctype(restype),
     )
 
-
-# --- decorator form: docstring IS the assembly ---
+# ==========
+# Decorator
+# ==========
 
 def asm(argtypes=None, restype=int, clobbers=None, arch=None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """
+    Use this decorator to wrap a function containing only a bare docstring to make an assembly function.
+
+    `arch` must be one of: win86, linux86, mac86, winarm64, linuxarm64, macarm64
+
+    Arguments:
+        argtypes: Optional[List] = None - A list of types for the arguments to be passed.
+        restype: Any = ctypes.c_long - The type that will be returned by the assembly.
+        clobbers: Optional[list] = None - A list of registers that will be clobbered (overwritten), allows this code to save and reload them for you.
+        arch: Optional[str] = None - The architecture this assembly should be used for, to provide other options, re-declare the function with the same name and decorator, but a different passed `arch`.
+    """
     resolved_argtypes = [_resolve_ctype(t) for t in (argtypes or [])]
     resolved_restype = _resolve_ctype(restype)
 
@@ -264,8 +303,8 @@ def asm(argtypes=None, restype=int, clobbers=None, arch=None) -> Callable[[Calla
         key = f"{fn.__module__}.{fn.__qualname__}"
 
         if not _arch_matches(arch):
-            # Wrong platform for this variant - never touch the registry,
-            # just hand back whatever's already there (or a stub if nothing matched yet).
+            # This definition is the wrong platform, we shouldn't register it.
+            # Instead, return the already registered version, or a stub if nothing has yet matched.
             return _ASM_REGISTRY.get(key, _unavailable_stub(fn.__name__))
 
         doc = fn.__doc__
