@@ -1,21 +1,10 @@
 # MagicalPython
 
-<table>
-  <tr>
-    <td valign="top">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://itoj.dev/embed/Wwatermark.png">
-        <source media="(prefers-color-scheme: light)" srcset="https://itoj.dev/embed/Bwatermark.png">
-        <img alt="ItsThatOneJack, Copyright, All Rights Reserved Unless Stated Otherwise. Follow the license!" src="https://itoj.dev/embed/Bwatermark.png">
-      </picture>
-    </td>
-    <td valign="top">
-      <picture>
-        <img width="500" height="500" alt="This project was created by ItsThatOneJack." src="https://github.com/user-attachments/assets/5a713e8c-a42b-4dc1-a358-f2a79e12dfcf" />
-      </picture>
-    </td>
-  </tr>
-</table>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://itoj.dev/embed/Wwatermark.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://itoj.dev/embed/Bwatermark.png">
+  <img alt="ItsThatOneJack, Copyright, All Rights Reserved Unless Stated Otherwise. Follow the license!" src="https://itoj.dev/embed/Bwatermark.png">
+</picture>
 
 <p align="center"><strong>MagicalPython</strong> <em>&mdash; I originally wanted to call it Python++ :c</em></p>
 
@@ -33,7 +22,7 @@
 
 **E.g.:** `"Why would you ever make that?"`
 
-We know what you are thinking: "Why would someone ever make this?" Well, the answer is "because we can." There are so many cautionary tales about the dangers of thinking about "why not" rather than "why" that nobody ever stops to actually think "I can make that, why shouldn't I?" I strive to change that.
+I know what you are thinking: "Why would someone ever make this?" Well, the answer is "because I can." There are so many cautionary tales about the dangers of thinking about "why not" rather than "why" that nobody ever stops to actually think "I can make that, why shouldn't I?" I strive to change that.
 
 *That* is why I made this monstrosity. Python with nearly everything nobody ever thought "why not!" about.
 
