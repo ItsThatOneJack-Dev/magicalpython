@@ -16,6 +16,11 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 
+[project.urls]
+Homepage = "https://github.com/ItsThatOneJack-Dev/magicalpython"
+Repository = "https://github.com/ItsThatOneJack-Dev/magicalpython.git"
+Issues = "https://github.com/ItsThatOneJack-Dev/magicalpython/issues"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
