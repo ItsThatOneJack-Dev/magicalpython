@@ -1,3 +1,8 @@
+# (C) 2026 ItsThatOneJack (Jack Bacon)
+# This Source Code Form is subject to the terms of the Zenith Public License,
+# v. 1.0. If you did not receive a copy of the Zenith Public License with this
+# software, you can obtain one at <https://itoj.dev/licenses/ZPL-1.0.md>.
+
 from __future__ import annotations
 
 __magicalpython_internal__ = True # This allows any traceback frames from this file to be removed from printed tracebacks. Makes them look better.

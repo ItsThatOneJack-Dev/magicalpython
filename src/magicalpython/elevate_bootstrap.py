@@ -1,3 +1,8 @@
+# (C) 2026 ItsThatOneJack (Jack Bacon)
+# This Source Code Form is subject to the terms of the Zenith Public License,
+# v. 1.0. If you did not receive a copy of the Zenith Public License with this
+# software, you can obtain one at <https://itoj.dev/licenses/ZPL-1.0.md>.
+
 # This file is the MagicalPython elevation bootstrap.
 # It is not meant to be imported or run directly.
 # relaunch_elevated spawns this automatically as the elevated process.

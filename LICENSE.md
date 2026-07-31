@@ -353,8 +353,9 @@ notice described in Exhibit B of this License must be attached.
 Exhibit A - Source Code Form License Notice
 -------------------------------------------
 
-  This Source Code Form is subject to the terms of the Zenith Public
-  License, v. 1.0.
+  This Source Code Form is subject to the terms of the Zenith Public License,
+  v. 1.0. If you did not receive a copy of the Zenith Public License with this
+  software, you can obtain one at <https://itoj.dev/licenses/ZPL-1.0.md>.
 
 If it is not possible or desirable to put the notice in a particular
 file, then You may include the notice in a location (such as a LICENSE
@@ -366,5 +367,6 @@ You may add additional accurate notices of copyright ownership.
 Exhibit B - "Incompatible With Secondary Licenses" Notice
 ---------------------------------------------------------
 
-  This Source Code Form is "Incompatible With Secondary Licenses", as
-  defined by the Zenith Public License, v. 1.0.
+  This Source Code Form is "Incompatible With Secondary Licenses", as defined by the
+  Zenith Public License, v. 1.0. If you did not receive a copy of the Zenith Public
+  License with this software, you can obtain one at <https://itoj.dev/licenses/ZPL-1.0.md>.
