@@ -31,7 +31,7 @@ static LONG WINAPI handler(EXCEPTION_POINTERS* info)
     return EXCEPTION_CONTINUE_SEARCH; // only reached for exception types we don't claim
 }
 
-__declspec(dllexport) void ppp_install_segfault_handler(void)
+__declspec(dllexport) void magicalpython_install_segfault_handler(void)
 {
     AddVectoredExceptionHandler(1, handler);
 }
@@ -45,7 +45,7 @@ static void handler(int sig)
     raise(sig); // already unrecoverable on POSIX - this re-raise really does kill the process
 }
 
-__attribute__((visibility("default"))) void ppp_install_segfault_handler(void)
+__attribute__((visibility("default"))) void magicalpython_install_segfault_handler(void)
 {
     static char altstack[SIGSTKSZ];
     stack_t ss;
