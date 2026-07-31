@@ -52,7 +52,7 @@ __all__ = [
     "__builtin__"
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 class _AutoTryTransform(ast.NodeTransformer):
     def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.FunctionDef:
